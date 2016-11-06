@@ -37,7 +37,7 @@ public class Lineup {
 	private Game game;
 	
 	@ManyToMany(cascade = CascadeType.ALL)
-	@JoinTable(name = "LINEUP_PLAYER", catalog = "mkyongdb", joinColumns = {
+	@JoinTable(name = "LINEUP_PLAYER", joinColumns = {
 			@JoinColumn(name = "LINEUP_ID", nullable = false, updatable = false) },
 			inverseJoinColumns = { @JoinColumn(name = "PLAYER_ID",
 					nullable = false, updatable = false) })

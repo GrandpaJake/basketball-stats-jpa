@@ -69,4 +69,8 @@ public class Player {
 		this.team = team;
 	}
 	
+	public String getUniqueName() {
+		return (firstName+lastName+team.getSchoolName());
+	}
+	
 }

@@ -1,16 +1,25 @@
 package com.couchface.sports.basketballstats.service.impl;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
+import org.apache.commons.collections.CollectionUtils;
+
 import com.couchface.sports.basketballstats.entity.Game;
+import com.couchface.sports.basketballstats.entity.GameEvent;
 import com.couchface.sports.basketballstats.entity.Lineup;
 import com.couchface.sports.basketballstats.entity.Player;
+import com.couchface.sports.basketballstats.entity.ShotTypeDomain;
 import com.couchface.sports.basketballstats.entity.Team;
+import com.couchface.sports.basketballstats.entity.TimeoutTypeDomain;
 import com.couchface.sports.basketballstats.service.BasketballStatsService;
 
 public class MensCollegeService implements BasketballStatsService {
+	
+	private List<TimeoutTypeDomain> timeoutTypes = null;
+	private List<ShotTypeDomain> shotTypes  = null;
 	
 	public Game addNewGame(Game game) {
 		Game persistedGame = new Game();
@@ -19,14 +28,52 @@ public class MensCollegeService implements BasketballStatsService {
 		persistedGame.setAwayTeam(findOrAddTeam(game.getAwayTeam()));
 		persistedGame.setGameId(game.getGameId());
 		List<Lineup> lineupsWithPlayers = replaceLineupPlayersWithHomeAndAwayTeamPlayers(game.getLineups(),persistedGame.getHomeTeam(),persistedGame.getAwayTeam());
-		persistedGame.getLineups().addAll(findOrAddLineups(lineupsWithPlayers));
+		persistedGame.getLineups().addAll(addLineups(lineupsWithPlayers));
+		persistedGame.getEvents().addAll(fixEventsWithGame(game.getEvents(),persistedGame));
 		persistedGame.setGameTime(game.getGameTime());
 		persistedGame.setId(game.getId());
 		persistedGame.setOfficialOne(game.getOfficialOne());
 		persistedGame.setOfficialTwo(game.getOfficialTwo());
 		persistedGame.setOfficialThree(game.getOfficialThree());
 		
+		
 		return addGame(persistedGame);
+	}
+	
+	private List<GameEvent> fixEventsWithGame(List<GameEvent> events, Game game) {
+		ArrayList<GameEvent> fixedEvents = new  ArrayList<GameEvent>();
+		for (GameEvent eventToFix : events) {
+			eventToFix.replaceFieldsWithPersistedObjects(game, retrieveAllShotTypes(), retrieveAllTimeoutTypes());
+			fixedEvents.add(eventToFix);
+		}
+		return fixedEvents;
+	}
+	
+	private HashMap<String,Player> getMapOfPlayersFromTeams(Team homeTeam, Team awayTeam) {
+		HashMap<String,Player> playersFromTeams = new HashMap<String,Player>();
+		for (Player player : homeTeam.getPlayers()) {
+			playersFromTeams.put(player.getUniqueName(), player);
+		}
+		for (Player player : awayTeam.getPlayers()) {
+			playersFromTeams.put(player.getUniqueName(), player);
+		}
+		return playersFromTeams;
+	}
+
+	public List<TimeoutTypeDomain> retrieveAllTimeoutTypes() {
+		if (CollectionUtils.isEmpty(this.timeoutTypes)) {
+			timeoutTypes = new ArrayList<TimeoutTypeDomain>();
+			//TODO make this  use entity manager to retrieve all of these from db instead
+		}
+		return timeoutTypes;
+	}
+	
+	public List<ShotTypeDomain> retrieveAllShotTypes() {
+		if (CollectionUtils.isEmpty(shotTypes)) {
+			shotTypes = new ArrayList<ShotTypeDomain>();
+			//TODO make this  use entity manager to retrieve all of these from db instead
+		}
+		return shotTypes;
 	}
 	
 	private Game addGame(Game game) {
@@ -37,31 +84,22 @@ public class MensCollegeService implements BasketballStatsService {
 	private List<Lineup> replaceLineupPlayersWithHomeAndAwayTeamPlayers(
 			List<Lineup> lineups, Team homeTeam, Team awayTeam) {
 		ArrayList<Lineup> fixedLineups = new ArrayList<Lineup>();
-		HashMap<Long,Player> playersFromTeams = new HashMap<Long,Player>();
-		for (Player player : homeTeam.getPlayers()) {
-			playersFromTeams.put(player.getId(), player);
-		}
-		for (Player player : awayTeam.getPlayers()) {
-			playersFromTeams.put(player.getId(), player);
-		}
+		HashMap<String,Player> playersFromTeams = getMapOfPlayersFromTeams(homeTeam,awayTeam);
 		for (Lineup lineup : lineups) {
 			Lineup fixedLineup = lineup.shallowCopy();
 			fixedLineup.getPlayers().clear();
 			for (Player player : lineup.getPlayers()) {
-				fixedLineup.getPlayers().add(playersFromTeams.get(player.getId()));
+				fixedLineup.getPlayers().add(playersFromTeams.get(player.getUniqueName()));
 			}
 			fixedLineups.add(fixedLineup);
 		}
 		return fixedLineups;
 	}
 
-	private List<Lineup> findOrAddLineups(List<Lineup> lineups) {
+	private List<Lineup> addLineups(List<Lineup> lineups) {
 		ArrayList<Lineup> persistedLineups = new ArrayList<Lineup>();
 		for (Lineup lineup : lineups) {
-			Lineup persistedLineup = findLineup(lineup);
-			if (persistedLineup == null) {
-				persistedLineup = addLineup(lineup);
-			}
+			persistedLineups.add(addLineup(lineup));
 		}
 		return persistedLineups;
 	}

@@ -1,5 +1,7 @@
 package com.couchface.sports.basketballstats.entity;
 
+import java.util.List;
+
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.DiscriminatorColumn;
@@ -112,5 +114,7 @@ public abstract class GameEvent {
 	public void setAwayLineup(Lineup awayLineup) {
 		this.awayLineup = awayLineup;
 	}
+	
+	public abstract void replaceFieldsWithPersistedObjects(Game persistedGame, List<ShotTypeDomain> shotTypes, List<TimeoutTypeDomain> timeoutTypes);
 	
 }
